@@ -1,14 +1,16 @@
 import React from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, BarChart, Bar, Legend 
+  PieChart, Pie, Cell, Legend 
 } from 'recharts';
-import { MOCK_SALES_DATA } from '../types';
 import { 
   TrendingUp, Users, IndianRupee, ShoppingBag, 
-  ArrowUpRight, ArrowDownRight, Package, AlertCircle, Activity, ChevronRight 
+  ArrowUpRight, ArrowDownRight, Package, AlertCircle, Activity, ChevronRight,
+  Plus
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -24,17 +26,20 @@ const StatCard = ({ title, value, trend, trendValue, icon: Icon, colorClass }: a
         <Icon className={`w-6 h-6 ${colorClass.replace('bg-', 'text-')}`} />
       </div>
     </div>
-    <div className="relative z-10 flex items-center mt-4">
-      <span className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-        {trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
-        {trendValue}
-      </span>
-      <span className="text-xs text-slate-400 ml-2">vs last month</span>
-    </div>
+    {trend && (
+      <div className="relative z-10 flex items-center mt-4">
+        <span className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+          {trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
+          {trendValue}
+        </span>
+        <span className="text-xs text-slate-400 ml-2">vs last month</span>
+      </div>
+    )}
   </div>
 );
 
 export const Dashboard: React.FC = () => {
+  const { user } = useAuth();
   const { orders, customers, products } = useData();
 
   // Stats Calculations
@@ -53,24 +58,57 @@ export const Dashboard: React.FC = () => {
     value: statusCounts[status],
   }));
 
-  // Low Stock Items
+  // Generate dynamic sales data for the last 7 days from orders
+  const generateSalesData = () => {
+    if (orders.length === 0) return [];
+    
+    // Group orders by date
+    const salesByDate: Record<string, number> = {};
+    orders.forEach(order => {
+      salesByDate[order.date] = (salesByDate[order.date] || 0) + order.total;
+    });
+
+    // Sort dates and take last 7 (simplified for demo)
+    return Object.keys(salesByDate).sort().slice(-7).map(date => ({
+      name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+      sales: salesByDate[date]
+    }));
+  };
+
+  const salesData = generateSalesData();
   const lowStockItems = products.filter(p => p.stock < 15);
+  const isEmpty = orders.length === 0 && products.length === 0 && customers.length === 0;
 
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard Overview</h1>
-          <p className="text-slate-500 mt-1">Welcome back! Here's what's happening in your store today.</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Welcome, {user?.name || 'User'}!</h1>
+          <p className="text-slate-500 mt-1">Here's what's happening in your store today.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
-            Download Report
-          </button>
-          <button className="bg-primary-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-primary-700 transition-all shadow-md shadow-primary-500/20 flex items-center">
-            <Activity className="w-4 h-4 mr-2" />
-            Live Analytics
-          </button>
+          {isEmpty ? (
+             <>
+                <Link to="/inventory" className="flex items-center px-4 py-2.5 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 font-medium text-slate-700 text-sm">
+                  <Package className="w-4 h-4 mr-2" />
+                  Add Products
+                </Link>
+                <Link to="/orders" className="flex items-center px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-medium text-sm shadow-md shadow-primary-500/20">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Order
+                </Link>
+             </>
+          ) : (
+             <>
+                <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
+                  Download Report
+                </button>
+                <button className="bg-primary-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-primary-700 transition-all shadow-md shadow-primary-500/20 flex items-center">
+                  <Activity className="w-4 h-4 mr-2" />
+                  Live Analytics
+                </button>
+             </>
+          )}
         </div>
       </div>
 
@@ -80,7 +118,7 @@ export const Dashboard: React.FC = () => {
           title="Total Revenue" 
           value={`₹${totalRevenue.toLocaleString()}`} 
           trend="up" 
-          trendValue="12.5%" 
+          trendValue="0%" 
           icon={IndianRupee} 
           colorClass="bg-indigo-500" 
         />
@@ -88,7 +126,7 @@ export const Dashboard: React.FC = () => {
           title="Total Orders" 
           value={totalOrders} 
           trend="up" 
-          trendValue="8.2%" 
+          trendValue="0%" 
           icon={ShoppingBag} 
           colorClass="bg-emerald-500" 
         />
@@ -96,7 +134,7 @@ export const Dashboard: React.FC = () => {
           title="Avg. Order Value" 
           value={`₹${avgOrderValue.toFixed(0)}`} 
           trend="down" 
-          trendValue="2.1%" 
+          trendValue="0%" 
           icon={TrendingUp} 
           colorClass="bg-amber-500" 
         />
@@ -104,7 +142,7 @@ export const Dashboard: React.FC = () => {
           title="Total Customers" 
           value={customers.length} 
           trend="up" 
-          trendValue="4.5%" 
+          trendValue="0%" 
           icon={Users} 
           colorClass="bg-pink-500" 
         />
@@ -117,33 +155,36 @@ export const Dashboard: React.FC = () => {
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="font-bold text-lg text-slate-800">Revenue Analytics</h3>
-              <p className="text-xs text-slate-500">Income over the last 7 days</p>
+              <p className="text-xs text-slate-500">Income trends based on orders</p>
             </div>
-            <select className="bg-slate-50 border border-slate-200 text-slate-600 text-xs rounded-lg px-2 py-1 focus:ring-2 focus:ring-primary-500 outline-none">
-              <option>Last 7 Days</option>
-              <option>Last Month</option>
-            </select>
           </div>
           <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={MOCK_SALES_DATA}>
-                <defs>
-                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} tickFormatter={(value) => `₹${value}`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  itemStyle={{ color: '#4f46e5', fontWeight: 600 }}
-                  cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
-                />
-                <Area type="monotone" dataKey="sales" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {salesData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={salesData}>
+                  <defs>
+                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} tickFormatter={(value) => `₹${value}`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ color: '#4f46e5', fontWeight: 600 }}
+                    cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
+                  />
+                  <Area type="monotone" dataKey="sales" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400 text-sm flex-col">
+                <p>Not enough data to display chart</p>
+                {isEmpty && <p className="text-xs mt-1">Create your first order to see analytics</p>}
+              </div>
+            )}
           </div>
         </div>
 
@@ -151,34 +192,42 @@ export const Dashboard: React.FC = () => {
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
           <h3 className="font-bold text-lg text-slate-800 mb-6">Order Status</h3>
           <div className="flex-1 min-h-[200px] relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                   contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Center Text */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-               <div className="text-center">
-                  <p className="text-2xl font-bold text-slate-800">{totalOrders}</p>
-                  <p className="text-xs text-slate-400">Total</p>
+            {totalOrders > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                     contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+               <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                  No orders yet
                </div>
-            </div>
+            )}
+            {/* Center Text */}
+            {totalOrders > 0 && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                 <div className="text-center">
+                    <p className="text-2xl font-bold text-slate-800">{totalOrders}</p>
+                    <p className="text-xs text-slate-400">Total</p>
+                 </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -190,9 +239,9 @@ export const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
           <div className="p-6 border-b border-slate-50 flex justify-between items-center">
             <h3 className="font-bold text-lg text-slate-800">Recent Orders</h3>
-            <button className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center">
+            <Link to="/orders" className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center">
               View All <ChevronRight className="w-4 h-4 ml-1" />
-            </button>
+            </Link>
           </div>
           <div className="overflow-x-auto flex-1">
             <table className="w-full text-left text-sm text-slate-600">
@@ -205,30 +254,38 @@ export const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {orders.slice(0, 5).map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-900">{order.id}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-400 to-indigo-500 text-white text-[10px] flex items-center justify-center mr-2 font-bold">
-                          {order.customerName.charAt(0)}
+                {orders.length > 0 ? (
+                  orders.slice(0, 5).map((order) => (
+                    <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-slate-900">{order.id}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-400 to-indigo-500 text-white text-[10px] flex items-center justify-center mr-2 font-bold">
+                            {order.customerName.charAt(0)}
+                          </div>
+                          {order.customerName}
                         </div>
-                        {order.customerName}
-                      </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold capitalize
+                          ${order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600' :
+                            order.status === 'Processing' ? 'bg-blue-50 text-blue-600' :
+                            order.status === 'Pending' ? 'bg-amber-50 text-amber-600' :
+                            order.status === 'Shipped' ? 'bg-indigo-50 text-indigo-600' :
+                            'bg-slate-100 text-slate-600'}`}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right font-semibold text-slate-700">₹{order.total.toFixed(2)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
+                      No recent orders.
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold capitalize
-                        ${order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600' :
-                          order.status === 'Processing' ? 'bg-blue-50 text-blue-600' :
-                          order.status === 'Pending' ? 'bg-amber-50 text-amber-600' :
-                          order.status === 'Shipped' ? 'bg-indigo-50 text-indigo-600' :
-                          'bg-slate-100 text-slate-600'}`}>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right font-semibold text-slate-700">₹{order.total.toFixed(2)}</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -265,14 +322,14 @@ export const Dashboard: React.FC = () => {
               ))
             ) : (
               <div className="text-center py-8 text-slate-400 text-sm">
-                All products are well stocked.
+                {products.length === 0 ? "Add products to see alerts." : "All products are well stocked."}
               </div>
             )}
           </div>
           <div className="p-4 border-t border-slate-50 bg-slate-50/30 text-center">
-            <button className="text-xs font-semibold text-slate-600 hover:text-primary-600 transition-colors">
+            <Link to="/inventory" className="text-xs font-semibold text-slate-600 hover:text-primary-600 transition-colors">
               Go to Inventory
-            </button>
+            </Link>
           </div>
         </div>
 

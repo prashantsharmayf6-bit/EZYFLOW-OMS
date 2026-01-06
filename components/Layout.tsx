@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Package, Bell, Search, User, Settings, Users } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Bell, Search, User, Settings, Users, LogOut } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
+import { useAuth } from '../context/AuthContext';
 
 const SidebarItem = ({ to, icon: Icon, label }: { to: string, icon: React.ElementType, label: string }) => (
   <NavLink
@@ -21,6 +22,7 @@ const SidebarItem = ({ to, icon: Icon, label }: { to: string, icon: React.Elemen
 
 export const Layout: React.FC = () => {
   const { companyName, logo } = useSettings();
+  const { user, logout } = useAuth();
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -49,15 +51,24 @@ export const Layout: React.FC = () => {
         </nav>
 
         <div className="p-4 border-t border-slate-100">
-          <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
-              <User className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-700">Admin User</p>
-              <p className="text-xs text-slate-500">View Profile</p>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 mb-2">
+            <div className="flex items-center space-x-3 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-700 truncate">{user?.name}</p>
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+              </div>
             </div>
           </div>
+          <button 
+            onClick={logout}
+            className="w-full flex items-center justify-center space-x-2 p-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 

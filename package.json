@@ -1,5 +1,5 @@
 {
-  "name": "nexus-oms",
+  "name": "ezyflow",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,8 +15,8 @@
     "@google/genai": "^1.34.0",
     "react-dom": "^19.2.3",
     "recharts": "^3.6.0",
-    "@vitejs/plugin-react": "^5.1.2",
-    "vite": "^7.3.0"
+    "vite": "^7.3.0",
+    "@vitejs/plugin-react": "^5.1.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

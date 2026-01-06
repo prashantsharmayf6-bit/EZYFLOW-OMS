@@ -10,7 +10,7 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [companyName, setCompanyName] = useState('Nexus OMS');
+  const [companyName, setCompanyName] = useState('Ezyflow');
   const [logo, setLogo] = useState<string | null>(null);
 
   // Initialize from local storage on mount
