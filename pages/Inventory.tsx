@@ -1,17 +1,31 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { Sparkles, Loader2, X, Search, Plus, Package } from 'lucide-react';
+import { Sparkles, Loader2, X, Search, Plus, Package, Save } from 'lucide-react';
 import { generateProductDescription } from '../services/geminiService';
 import { useData } from '../context/DataContext';
 
 export const Inventory: React.FC = () => {
   const { products, updateProduct, addProduct } = useData();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  
+  // AI Description Modal State
   const [isModalOpen, setModalOpen] = useState(false);
   const [generatedDesc, setGeneratedDesc] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [keywords, setKeywords] = useState('');
 
+  // Add Product Modal State
+  const [isAddModalOpen, setAddModalOpen] = useState(false);
+  const [newProductForm, setNewProductForm] = useState({
+    name: '',
+    sku: '',
+    category: 'Electronics',
+    price: '',
+    stock: '',
+    description: ''
+  });
+
+  // --- AI Handlers ---
   const handleGenerateDesc = async () => {
     if (!selectedProduct) return;
     setIsGenerating(true);
@@ -38,6 +52,39 @@ export const Inventory: React.FC = () => {
     setModalOpen(true);
   };
 
+  // --- Add Product Handlers ---
+  const handleOpenAddModal = () => {
+    setNewProductForm({
+      name: '',
+      sku: '',
+      category: 'Electronics',
+      price: '',
+      stock: '',
+      description: ''
+    });
+    setAddModalOpen(true);
+  };
+
+  const handleCreateProduct = () => {
+    if (!newProductForm.name || !newProductForm.price || !newProductForm.stock) {
+      alert("Please fill in Name, Price, and Stock.");
+      return;
+    }
+
+    const newProduct: Product = {
+      id: `P-${Date.now()}`,
+      name: newProductForm.name,
+      sku: newProductForm.sku || `SKU-${Math.floor(Math.random() * 100000)}`,
+      category: newProductForm.category,
+      price: parseFloat(newProductForm.price),
+      stock: parseInt(newProductForm.stock),
+      description: newProductForm.description
+    };
+
+    addProduct(newProduct);
+    setAddModalOpen(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -45,7 +92,10 @@ export const Inventory: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-800">Inventory</h1>
           <p className="text-slate-500">Manage your product catalog and stock.</p>
         </div>
-        <button className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-700 shadow-sm transition-all">
+        <button 
+          onClick={handleOpenAddModal}
+          className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-700 shadow-sm transition-all"
+        >
           <Plus className="w-4 h-4" />
           <span>Add Product</span>
         </button>
@@ -165,6 +215,113 @@ export const Inventory: React.FC = () => {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Product Modal (Dark Theme) */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900">
+              <h3 className="font-bold text-lg text-white">Add New Product</h3>
+              <button onClick={() => setAddModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto">
+              <div>
+                <label className="block text-sm font-medium text-white mb-1">Product Name *</label>
+                <input
+                  type="text"
+                  value={newProductForm.name}
+                  onChange={(e) => setNewProductForm({ ...newProductForm, name: e.target.value })}
+                  placeholder="e.g. Wireless Headphones"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none placeholder:text-slate-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-1">Price (₹) *</label>
+                  <input
+                    type="number"
+                    value={newProductForm.price}
+                    onChange={(e) => setNewProductForm({ ...newProductForm, price: e.target.value })}
+                    placeholder="0.00"
+                    min="0"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white mb-1">Stock Quantity *</label>
+                  <input
+                    type="number"
+                    value={newProductForm.stock}
+                    onChange={(e) => setNewProductForm({ ...newProductForm, stock: e.target.value })}
+                    placeholder="0"
+                    min="0"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-1">Category</label>
+                  <select
+                    value={newProductForm.category}
+                    onChange={(e) => setNewProductForm({ ...newProductForm, category: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                  >
+                    <option value="Electronics">Electronics</option>
+                    <option value="Clothing">Clothing</option>
+                    <option value="Home & Garden">Home & Garden</option>
+                    <option value="Books">Books</option>
+                    <option value="Accessories">Accessories</option>
+                    <option value="Toys">Toys</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white mb-1">SKU (Optional)</label>
+                  <input
+                    type="text"
+                    value={newProductForm.sku}
+                    onChange={(e) => setNewProductForm({ ...newProductForm, sku: e.target.value })}
+                    placeholder="Auto-generated if empty"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white mb-1">Description</label>
+                <textarea
+                  value={newProductForm.description}
+                  onChange={(e) => setNewProductForm({ ...newProductForm, description: e.target.value })}
+                  placeholder="Enter product description..."
+                  rows={3}
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-800 flex justify-end space-x-3 bg-slate-900">
+              <button
+                onClick={() => setAddModalOpen(false)}
+                className="px-4 py-2 text-slate-300 font-medium text-sm hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateProduct}
+                className="px-6 py-2 bg-primary-600 text-white font-medium text-sm rounded-lg hover:bg-primary-700 transition-colors flex items-center shadow-lg shadow-primary-900/20"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save Product
+              </button>
             </div>
           </div>
         </div>
